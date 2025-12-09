@@ -1,0 +1,180 @@
+{
+	"system_instruction": [ 
+	{"text": "You are a career advisor for prospecting candidates. Primary objective = [help decide which company is best for the selected career path or job role, advise on the various aspects of the company, what people already working in those job roles or similar roles have to say about the job and the company]."},
+	{"text": "Companies portray their workplace positively but the reality may differ hugely with uneven workload distributions, toxicity in cultural dynamics and other aspects. Therefore, your config is able to access a database of employee reviews about the company. You will have to decide whether the user query requires you to access the database or not."},
+		{"text": "Work Environment refers to overall dynamics of employment, specifically, pay scale, career growth, culture, work-life balance, work load."}
+	
+],
+"safety_setting": [
+	{"category": "HARM_CATEGORY_HARASSMENT",
+	"threshold": "BLOCK_NONE"
+	}
+],
+
+"intro": {
+	"type": "object",
+	"properties": {
+		"response": {
+			"type": "string",
+			"description": "This is introduction to the candidate. Respond to their query directly and ask for more information, if required."
+		},
+		"query": {
+			"type": "string",
+			"description": "Summarize the user's question. Exclude any specifics."
+		},
+		"firm": {
+			"type": "string",
+			"description": "Extract the company name from the query, if mentioned."
+		},
+		"job": {
+			"type": "string",
+			"description": "Extract the job role or position from the query, if mentioned."
+		}
+		
+	}
+	
+},
+
+"functions": [
+{
+	"name": "company_query",
+	"description": "When asked about work environment, do a database search to find company information.",
+	"parameters": {
+		"type": "object",
+		"properties": {
+			"query": {
+				"type": "string",
+				"description": "Summarize the query. Include any specifics."
+			},
+			"company": {
+				"type": "string",
+				"description": "Extract the company name from the query."
+			}
+		},
+		"required": ["query", "company"]
+	}
+},
+
+{
+	"name": "job_role_query",
+	"description": "When asked about a particular job, do a database search about the specific job role or title.",
+	"parameters": {
+		"type": "object",
+		"properties": {
+			"query": {
+				"type": "string",
+				"description": "Summarize the query. Include any specifics."
+			},
+			"job_title": {
+				"type": "string",
+				"description": "Extract the job title or position from the query."
+			}
+		},
+		"required": ["query", "job_title"]
+	}
+},
+
+{
+	"name": "find_company",
+	"description": "Given a set of requirements or preferences for a work environment, do a database search to find the company that meets those requirements or preferences.",
+	"parameters": {
+		"type": "object",
+		"properties": {
+			"query": {
+				"type": "string",
+				"description": "Summarize the query. Include any specifics."
+			},
+			"preferences": {
+				"type": "object",
+				"description": "Extract the preferences for the company search. Summarize. Try to infer the properties for preferences and assign a numeric value for them, if one is not explicitly provided.",
+				"properties": {
+					"summary": {
+						"type": "string",
+						"description": "Extract the keywords like large company, 0-100 employees, in New Jersey, good culture, reasonable worklife balance."
+					},
+					"count": {
+						"type": "integer",
+						"description": "Value between 0-10000, default=0. This acts as weight for the vector, reflecting the strength of the what the vector represents. How strictly must the preferences be fulfilled.",
+						"nullable": "false"
+					},
+					"overall": {
+						"type": "number",
+						"description": "Value between 0-5, worst to best, default=0. Overall company work environment rating. The overall emotion of the preferences = all positive or some negative is acceptable.",
+						"nullable": "false"
+					},
+					"worklife": {
+						"type": "number",
+						"description": "Value between 0-5, worst to best, default=0. Reflects work life balance when working for the company, paid days, work hours, etc.",
+						"nullable": "false"
+					},
+					"culture": {
+						"type": "number",
+						"description": "Value between 0-5, worst to best, default=0. Reflects the work culture, work load distribution, friendly co-workers, harassment protection, whistle-blower policy, etc.",
+						"nullable": "false"
+					},
+					"career": {
+						"type": "number",
+						"description": "Value between 0-5, worst to best, default=0. Reflects career building and growth opportunities, training and personal development.",
+						"nullable": "false"
+					},
+					"compensation": {
+						"type": "number",
+						"description": "Value between 0-5, worst to best, default=0. Reflects pay scale, bonus and benefits.",
+						"nullable": "false"
+					},
+					"management": {
+						"type": "number",
+						"description": "Value between 0-5, worst to best, default=0. Reflects the quality of the management team, their qualifications, treatment of the employees and overall support.",
+						"nullable": "false"
+					}
+				},
+				"required": ["summary", "count", "overall", "worklife", "culture", "career", "compensation", "management"]
+			}
+			},
+		
+		"required": ["query", "preferences"]
+}
+	
+},
+
+{
+	"name": "find_job_role",
+	"description": "Given a set of requirements or preferences for a job role, do a database searh to find the job that meets those requirements or preferences.",
+	"parameters": {
+		"type": "object",
+		"properties": {
+			"query": {
+				"type": "string",
+				"description": "Summarize the query. Include any specifics"
+			},
+			"preferences": {
+				"type": "string",
+				"description": "Extract the preference keywords like, mid-level manager, data driven, good pay, growth opportunity, etc."
+			}
+		},
+		"required": ["query", "preferences"]
+	}
+},
+
+{
+	"name": "find_job_role_company",
+	"description": "Given a set of requirements or preferences for a work environment and a job role, do a database search to find the company and the job that meets those requirements or preferences.",
+	"parameters": {
+		"type": "object",
+		"properties": {
+			"query": {
+				"type": "string",
+				"description": "Summarize the query. Include any specifics."
+			},
+			"preferences": {
+				"type": "string",
+				"description": "Extract the preference keywords for like, finance role in tech company, data analyst position with good culture, sales with commission-based pay, etc."
+				
+			}
+		},
+		"required": ["query", "preferences"]
+	}
+}
+]	
+
+}
