@@ -7,7 +7,6 @@ import pandas as pd
 import gensim
 from gensim.models.doc2vec import Doc2Vec
 import json
-from pymongo import MongoClient
 
 class EmployAidAgent:
     #api_key = os.environ.get("GEMINI_API_KEY")
