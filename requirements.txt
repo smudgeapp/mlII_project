@@ -1,0 +1,16 @@
+# requirements.txt
+
+# Numerical computing foundation
+numpy==1.26.2
+
+# Google GenAI library for models
+google-genai==0.2.2 
+
+# Data manipulation and analysis
+pandas==2.1.4
+
+# Efficient similarity search and clustering (vector store)
+faiss-cpu==1.7.4  # Use faiss-cpu if you don't require GPU capabilities
+
+# Topic modeling and vector space modeling
+gensim==4.3.2
