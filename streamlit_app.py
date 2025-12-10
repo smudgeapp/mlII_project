@@ -7,8 +7,10 @@ import time
 
 if 'agent' not in st.session_state:
     api_key = None
+    print(st.secrets)
     if 'GEMINI_API_KEY' in st.secrets:
         api_key = st.secrets['GEMINI_API_KEY']
+        print(f'secrets key: {api_key}')
     agent = EmployAidAgent(api_key=api_key)
     st.session_state.agent = agent
 
@@ -21,6 +23,7 @@ if "messages" not in st.session_state:
         
 if 'feedback' not in st.session_state:
     st.session_state.feedback = []
+
 
 st.set_page_config(page_title="EmployAID", layout="wide")
 st.title(" 👋 EmployAID")
@@ -66,11 +69,16 @@ with st.sidebar:
         """)
 
 # Select the Language Model
-st.subheader("Select Language Model")
+st.subheader("Select LLM")
+st.write("(**at times queries may get stuck, switching models can help)")
 model_option = st.selectbox(
     "Choose a Language Model:",
-    ("Gemini API", "Custom Model")
+    options=list(agent.models.keys()),
+    index=0
 )
+
+if model_option:
+    agent.launch_agent(model_name=model_option)
 
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
@@ -83,7 +91,6 @@ for i, message in enumerate(st.session_state.messages):
                 st.write(f'Rating: {r}')
 
 
-        
 if prompt := st.chat_input("Enter the name of the company you would like to search:"):
     # Display user message in chat message container
     st.chat_message("user").markdown(prompt)
@@ -99,9 +106,10 @@ if prompt := st.chat_input("Enter the name of the company you would like to sear
             query_time = time.time()
 
             with st.spinner("..."):
-                response, current_tokens, total_tokens = agent.call_agent(prompt)            
+                response, current_tokens, total_tokens = agent.call_agent(prompt)
+                #response, current_tokens, total_tokens = "testing", 100, 100
                 message_placeholder.markdown(response)
-
+                
             resp_time = time.time()
             duration = resp_time - query_time
             #st.info(f"Query Process Time: {duration:.2f} seconds**.")
@@ -117,9 +125,10 @@ if prompt := st.chat_input("Enter the name of the company you would like to sear
             
     with resp_cols[1]:
         rate_opts = [1, 2, 3, 4, 5]
-        if rating := st.radio("⭐?", options=rate_opts, index=None):
-            st.session_state.messages[len(st.session_state.messages) - 1]['feedback'] = rating
-
+        rating = st.radio("⭐?", options=rate_opts, index=None, key='rating_radio')
+        if rating:
+            st.session_state.messages[-1]['feedback'] = rating
+            
             
             
         

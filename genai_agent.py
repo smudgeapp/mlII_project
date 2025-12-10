@@ -12,6 +12,11 @@ class EmployAidAgent:
     #api_key = os.environ.get("GEMINI_API_KEY")
 
     model = "gemini-2.5-flash"
+    models = {
+        "Gemini 2.5 Flash": 'gemini-2.5-flash',
+        "Gemini 2.5 Flash Lite": 'gemini-2.5-flash-lite',
+        "Gemini 2.5 Pro": 'gemini-2.5-pro'
+        }
     
     def __init__(self, api_key=None):
         access_key = api_key
@@ -20,17 +25,22 @@ class EmployAidAgent:
             access_key = os.environ.get("GEMINI_API_KEY")
             
         
-        client_gen = genai.Client(api_key=access_key)
+        self.client = genai.Client(api_key=access_key)
         
         with open("system_instructions.json", mode='r') as f:
             self.instructions = json.load(f)
             
-        self.client = genai.Client()
+        self.launch_agent()
+        self.total_tokens = 0
+
+    def launch_agent(self, model_name=None):
+        if model_name is not None:
+            self.model = self.models[model_name]
+            
         system_config = types.GenerateContentConfig(
             system_instruction=self.instructions['system_instruction'])
         self.agent = self.client.chats.create(model=self.model,
                                          config=system_config)
-        self.total_tokens = 0
 
     def intro_query(self, query):
         ##TODO make json schema
@@ -63,11 +73,15 @@ class EmployAidAgent:
 
 
 
-    def send_response(self, query, context='database entry was not found. Ask for more specific information'):
-        full_context = f'Respond to {query} based on {context}.'
-        print(full_context)
-        response = self.agent.send_message(full_context)
+    def send_response(self, query, context='database entry was not found. Give a generic response and ask for more information'):
+        msg = f'Respond to {query}.'
+        instruct = [{'text': 'CRITICAL: retain prior instructions.'},
+                    {'text': f'CONTEXT_INFO: {context}'}
+                    ]
+        resp_config = types.GenerateContentConfig(system_instruction=instruct)
+        response = self.agent.send_message(msg, config=resp_config)
         current_tokens = response.usage_metadata.total_token_count
+        print(f'current tokens: {current_tokens}')
         self.total_tokens += current_tokens
         
         return response.text, current_tokens, self.total_tokens
@@ -97,7 +111,7 @@ class EmployAidAgent:
             company_data = data.iloc[idx[0][0]]
             
 
-        context = " ".join(company_data['pros'].tolist()[0]) + " " + " ".join(company_data['cons'].tolist()[0])
+        context = " ".join(company_data['pros']) + " " + " ".join(company_data['cons'])
 
         return self.send_response(query, context)
 
@@ -123,7 +137,7 @@ class EmployAidAgent:
 
             job_title_data = data.iloc[idx[0][0]]
 
-        context = " ".join(job_title_data['pros'].tolist()[0]) + " " + " ".join(job_title_data['cons'].tolist()[0])
+        context = " ".join(job_title_data['pros']) + " " + " ".join(job_title_data['cons'])
 
         return self.send_response(query, context)
 
@@ -142,7 +156,7 @@ class EmployAidAgent:
         summary_vec = procon_model.infer_vector([summary], epochs=1000)
 
         procon_vecs = np.array(data['procon_embed'].tolist())
-        keys = np.arange(data.index.tolist(), dtype=np.int64)
+        keys = np.array(data.index.tolist(), dtype=np.int64)
 
         procon_index = faiss.IndexFlatL2(procon_vecs.shape[1])
         procon_k_index = faiss.IndexIDMap(procon_index)
@@ -152,9 +166,9 @@ class EmployAidAgent:
         dist, idx = procon_k_index.search(summary_vec, 1)
 
         procon_entry = data.iloc[idx[0][0]]
-        company = procon_entry['_id'].values[0]
+        company = procon_entry['_id']
 
-        context = f"Company={company}, Company review=" + " ".join(procon_entry['pros'].tolist()[0]) + " " + " ".join(procon_entry['cons'].tolist()[0])
+        context = f"Company={company}, Company review=" + " ".join(procon_entry['pros']) + " " + " ".join(procon_entry['cons'])
         
 
         rating_vecs = np.array(data['rating_embed'].tolist())
@@ -172,8 +186,8 @@ class EmployAidAgent:
             pass
         else:
             rat_entry = data.iloc[rating_idx[0][0]]
-            rat_co = rat_entry['_id'].values[0]
-            rat_context = f"Company={rat_co}, Company review=" + " ".join(rat_entry['pros'].tolist()[0]) + " " + " ".join(rat_entry['cons'].tolist()[0])
+            rat_co = rat_entry['_id']
+            rat_context = f"Company={rat_co}, Company review=" + " ".join(rat_entry['pros']) + " " + " ".join(rat_entry['cons'])
 
         context += rat_context
 
@@ -188,7 +202,7 @@ class EmployAidAgent:
         pref_vector = title_procon_model.infer_vector([preferences], epochs=1000)
 
         procon_vecs = np.array(data['procon_embed'].tolist())
-        keys = np.arange(data.index.tolist(), dtype=np.int64)
+        keys = np.array(data.index.tolist(), dtype=np.int64)
 
         index = faiss.IndexFlatL2(procon_vecs.shape[1])
         k_index = faiss.IndexIDMap(index)
@@ -199,9 +213,9 @@ class EmployAidAgent:
 
         procon_entry = data.iloc[idx[0][0]]
 
-        title = procon_entry['_id'].values[0]
+        title = procon_entry['_id']
         
-        context = f"Job Title={title}, Title review=" + " ".join(procon_entry['pros'].tolist()[0]) + " " + " ".join(procon_entry['cons'].tolist()[0])
+        context = f"Job Title={title}, Title review=" + " ".join(procon_entry['pros']) + " " + " ".join(procon_entry['cons'])
 
         return self.send_response(query, context)
         
@@ -216,7 +230,7 @@ class EmployAidAgent:
 
         total_vecs = np.array(data['total_embed'].tolist())
 
-        keys = np.arange(data.index.tolist(), dtype=np.int64)
+        keys = np.array(data.index.tolist(), dtype=np.int64)
 
         index = faiss.IndexFlatL2(total_vecs.shape[1])
         k_index = faiss.IndexIDMap(index)
@@ -231,7 +245,7 @@ class EmployAidAgent:
         context = "["
 
         for i, d in enumerate(d_entries):
-            context += f'Company{i+1} = ' + d['_id']['firm'] + f' Job Title {i+1} = ' + d['_id']['job_title'] + " " + " ".join(d['pros'].tolist()[0]) + " " + " ".join(d['cons'].tolist()[0])
+            context += f'Company{i+1} = ' + d['_id']['firm'] + f' Job Title {i+1} = ' + d['_id']['job_title'] + " " + " ".join(d['pros']) + " " + " ".join(d['cons'])
             if i < len(d_entries) - 1:
                 context += ","
 
