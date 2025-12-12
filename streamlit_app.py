@@ -84,9 +84,9 @@ if model_option:
     agent.launch_agent(model_name=model_option)
 
 st.subheader("Add API Key")
-st.markdown("<p style='font-size:12px;'>This app has limited API access, sometimes this access limit may be exhausted resulting the app throwing an error. You may add your own API key here to relaunch.</p>",
+st.markdown("<p style='font-size:12px;'>This app has limited API access, this access limit may exhaust blocking usage. You may add your own API key here to relaunch.</p>",
             unsafe_allow_html=True)
-st.markdown("<p style='font-size:10px;'>**We do NOT save, store or retain keys in any source or form. They key is used ONCE to gain API access, after which this system has no way to recover that key. After your session ends or you navigate away from your this page, the API instance is no longer accessible.</p>",
+st.markdown("<p style='font-size:10px;'>**We do NOT save, store or retain keys in any source or form. They key is used ONCE to gain API access, after which this system has no way to recover that key. After your session ends or you navigate away from this page, the API instance is no longer accessible.</p>",
             unsafe_allow_html=True)
 
 def clear_input():
