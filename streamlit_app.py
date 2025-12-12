@@ -24,6 +24,8 @@ if "messages" not in st.session_state:
 if 'feedback' not in st.session_state:
     st.session_state.feedback = []
 
+if 'user_key' not in st.session_state:
+    st.session_state.user_key = ''
 
 st.set_page_config(page_title="EmployAID", layout="wide")
 st.title(" 👋 EmployAID")
@@ -70,7 +72,8 @@ with st.sidebar:
 
 # Select the Language Model
 st.subheader("Select LLM")
-st.write("(**at times queries may get stuck, switching models can help)")
+st.markdown("<p style='font-size:12px;'>**At times queries may get stuck, switching models can help</p>",
+           unsafe_allow_html=True)
 model_option = st.selectbox(
     "Choose a Language Model:",
     options=list(agent.models.keys()),
@@ -79,6 +82,23 @@ model_option = st.selectbox(
 
 if model_option:
     agent.launch_agent(model_name=model_option)
+
+st.subheader("Add API Key")
+st.markdown("<p style='font-size:12px;'>This app has limited API access, sometimes this access limit may be exhausted resulting the app throwing an error. You may add your own API key here to relaunch.</p>",
+            unsafe_allow_html=True)
+st.markdown("<p style='font-size:10px;'>**We do NOT save, store or retain keys in any source or form. They key is used ONCE to gain API access, after which this system has no way to recover that key. After your session ends or you navigate away from your this page, the API instance is no longer accessible.</p>",
+            unsafe_allow_html=True)
+
+def clear_input():
+    st.session_state.user_key = st.session_state.user_input_key
+    st.session_state.user_input_key = ""
+    agent = EmployAidAgent(api_key=st.session_state.user_key)
+    st.session_state.agent = agent
+    st.session_state.user_key = ""
+
+key_input = st.text_input("Enter your API Key:", key='user_input_key', on_change=clear_input)
+
+
 
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
@@ -122,12 +142,15 @@ if prompt := st.chat_input("Enter the name of the company you would like to sear
                 st.info(f"Query Process Time: {duration:.2f} seconds**.")
             with stat_cols[1]:
                 st.info(f'Total Tokens: {total_tokens}, Current Tokens: {current_tokens}')
-            
+
+
+    def on_radio_change():
+        st.session_state.messages[-1]['feedback'] = st.session_state.rating_radio
+        
     with resp_cols[1]:
         rate_opts = [1, 2, 3, 4, 5]
-        rating = st.radio("⭐?", options=rate_opts, index=None, key='rating_radio')
-        if rating:
-            st.session_state.messages[-1]['feedback'] = rating
+        rating = st.radio("⭐?", options=rate_opts, index=None, key='rating_radio', on_change=on_radio_change)
+        
             
             
             
