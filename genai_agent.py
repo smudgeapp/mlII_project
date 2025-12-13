@@ -8,6 +8,15 @@ import gensim
 from gensim.models.doc2vec import Doc2Vec
 import json
 
+
+"""
+    This script holds the EmployAidAgent class.
+
+    It connects to the API, loads the agent, sends, receives and processes user
+    queries.
+
+"""
+
 class EmployAidAgent:
     #api_key = os.environ.get("GEMINI_API_KEY")
 
@@ -33,6 +42,12 @@ class EmployAidAgent:
         self.launch_agent()
         self.total_tokens = 0
 
+    """
+        Helper function to instantiate chats session.
+
+        Required to change model at runtime without changing the client.
+    """
+
     def launch_agent(self, model_name=None):
         if model_name is not None:
             self.model = self.models[model_name]
@@ -42,12 +57,38 @@ class EmployAidAgent:
         self.agent = self.client.chats.create(model=self.model,
                                          config=system_config)
 
+    """
+        User entry point, each query is passed through this function that
+        decides whether to do a function calling or just respond to the
+        user query.
+
+        This intro query sets the tone for the user and primes the LLM for
+        further queries.
+        
+    """
+
+    
     def intro_query(self, query):
-        ##TODO make json schema
+        print('*** INTRO QUERY CALLED ***')
         config = types.GenerateContentConfig(response_mime_type='application/json',
                                              response_schema=self.instructions['intro'])
         response = self.agent.send_message(query, config=config)
-        return response.text
+        current_tokens = response.usage_metadata.total_token_count
+        self.total_tokens += current_tokens
+        response = json.loads(response.text)
+        if response['firm'] == "" and response['job'] == "":
+            return response['response'], current_tokens, self.total_tokens
+        else:
+            mid_query = response['query'] + " " + response['firm'] + " " + response['job']
+            return self.call_agent(mid_query)
+
+    """
+        This is the primary method called at each query.
+
+        This enables the LLM to decide whether to make a function call or
+        simply respond to the query.
+    """
+
 
     def call_agent(self, query):
         tools = types.Tool(function_declarations=self.instructions['functions'])
@@ -69,13 +110,17 @@ class EmployAidAgent:
                 return self.find_job_role_company(**func_call.args)
         else:
             text_response = part.text
-            return self.send_response(text_response)
+            return self.send_response(text_response, context="A database search was not required for this query. Respond to user query directly. Use chat history for context.")
 
 
+    """
+        Connector method to link the LLM tool calls to user query responding
+    """
 
-    def send_response(self, query, context='database entry was not found. Give a generic response and ask for more information'):
+
+    def send_response(self, query, context='Give a generic response and ask for more information'):
         msg = f'Respond to {query}.'
-        instruct = [{'text': 'CRITICAL: retain prior instructions.'},
+        instruct = [{'text': 'CRITICAL: retain prior instructions and persona.'},
                     {'text': f'CONTEXT_INFO: {context}'}
                     ]
         resp_config = types.GenerateContentConfig(system_instruction=instruct)
@@ -85,7 +130,12 @@ class EmployAidAgent:
         self.total_tokens += current_tokens
         
         return response.text, current_tokens, self.total_tokens
-        
+
+
+    """
+        Vector search function if the query is about a particular
+        company.
+    """
     
     def company_query(self, query, company):
         print("****CALLED: COMPANY QUERY****")
@@ -115,6 +165,11 @@ class EmployAidAgent:
 
         return self.send_response(query, context)
 
+    """
+        Vector search function if the query is about a specific job role
+    """
+
+
     def job_role_query(self, query, job_title):
         print("****CALLED: JOB TITLE QUERY****")
         data = pd.read_json('employaid.title_pros_cons.json')
@@ -141,6 +196,12 @@ class EmployAidAgent:
 
         return self.send_response(query, context)
 
+
+
+    """
+        Vector search function if the query is about a specific work
+        environment.
+    """
 
     def find_company(self, query, preferences):
         print("****CALLED: FIND COMPANY****")
@@ -193,6 +254,11 @@ class EmployAidAgent:
 
         return self.send_response(query, context)
 
+    """
+        Vector search function if the query describes a particular type
+        of work or job the user wants to pursue.
+    """
+
     def find_job_role(self, query, preferences):
         print("****CALLED: FIND JOB TITLE****")
 
@@ -218,7 +284,12 @@ class EmployAidAgent:
         context = f"Job Title={title}, Title review=" + " ".join(procon_entry['pros']) + " " + " ".join(procon_entry['cons'])
 
         return self.send_response(query, context)
-        
+
+
+    """
+        Vector search if the query is about a specific job type in a specific
+        work environment.
+    """
 
     def find_job_role_company(self, query, preferences):
         print("****CALLED: FIND JOB ROLE AND COMPANY****")

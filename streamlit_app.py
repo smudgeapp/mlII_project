@@ -126,9 +126,14 @@ if prompt := st.chat_input("Enter the name of the company you would like to sear
             query_time = time.time()
 
             with st.spinner("..."):
-                response, current_tokens, total_tokens = agent.call_agent(prompt)
-                #response, current_tokens, total_tokens = "testing", 100, 100
-                message_placeholder.markdown(response)
+                response, current_tokens, total_tokens = '', 0, 0
+                if len(st.session_state.messages) <= 1:
+                    response, current_tokens, total_tokens = agent.intro_query(prompt)
+                    message_placeholder.markdown(response)
+                else:
+                    response, current_tokens, total_tokens = agent.call_agent(prompt)
+                    #response, current_tokens, total_tokens = "testing", 100, 100
+                    message_placeholder.markdown(response)
                 
             resp_time = time.time()
             duration = resp_time - query_time
